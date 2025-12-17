@@ -1,0 +1,4 @@
+(executable
+ (name main)
+ (public_name repo-tool)
+ (libraries repo_tool cmdliner unix))

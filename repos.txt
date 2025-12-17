@@ -1,0 +1,17 @@
+https://tangled.org/anil.recoil.org/ocaml-crockford
+https://tangled.org/anil.recoil.org/ocaml-jsonfeed
+https://tangled.org/anil.recoil.org/xdge
+https://tangled.org/anil.recoil.org/ocaml-claudeio
+https://tangled.org/anil.recoil.org/ocaml-bytesrw-eio
+https://tangled.org/anil.recoil.org/ocaml-yamlrw
+https://tangled.org/anil.recoil.org/ocaml-yamlt
+https://tangled.org/anil.recoil.org/sortal
+https://tangled.org/anil.recoil.org/sortal-term
+https://tangled.org/anil.recoil.org/ocaml-punycode
+https://tangled.org/anil.recoil.org/ocaml-conpool
+https://tangled.org/anil.recoil.org/ocaml-requests
+https://tangled.org/anil.recoil.org/ocaml-karakeep
+https://tangled.org/anil.recoil.org/ocaml-html5rw
+https://github.com/tmattio/mosaic
+https://tangled.org/anil.recoil.org/ocaml-cookeio
+https://tangled.org/anil.recoil.org/ocaml-publicsuffix
