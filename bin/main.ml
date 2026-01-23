@@ -6,7 +6,7 @@ let input_file =
 
 let output_dir =
   let doc = "Output directory for the generated opam repository." in
-  Arg.(value & opt string "opam-repository" & info [ "o"; "output" ] ~docv:"DIR" ~doc)
+  Arg.(value & opt string "opam-mono-repo" & info [ "o"; "output" ] ~docv:"DIR" ~doc)
 
 let verbose =
   let doc = "Enable verbose output." in

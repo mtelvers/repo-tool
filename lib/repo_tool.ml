@@ -55,6 +55,13 @@ let run_command cmd =
   if exit_code = 0 then Ok ()
   else Error (Printf.sprintf "Command failed with exit code %d: %s" exit_code cmd)
 
+let get_git_sha repo_path =
+  let cmd = Printf.sprintf "git -C %s rev-parse HEAD" repo_path in
+  let ic = Unix.open_process_in cmd in
+  let sha = input_line ic in
+  ignore (Unix.close_process_in ic);
+  String.trim sha
+
 let rec mkdir_p path =
   if Sys.file_exists path then ()
   else begin
@@ -147,7 +154,7 @@ let package_name_from_opam_path path =
     String.sub basename 0 (String.length basename - 5)
   else basename
 
-let generate_repo_structure ~output_dir ~repo_path ~git_url =
+let generate_repo_structure ~output_dir ~repo_path ~git_url ~git_sha =
   let opam_files = find_opam_files repo_path in
   let packages_dir = Filename.concat output_dir "packages" in
   mkdir_p packages_dir;
@@ -168,8 +175,7 @@ let generate_repo_structure ~output_dir ~repo_path ~git_url =
       mkdir_p pkg_dir;
       let opam_target = Filename.concat pkg_dir "opam" in
       let url_section =
-        Printf.sprintf "\nurl {\n  src: \"%s\"\n  dev-repo: \"git+%s\"\n}\n"
-          git_url git_url
+        Printf.sprintf "\nurl {\n  src: \"git+%s#%s\"\n}\n" git_url git_sha
       in
       let lines = String.split_on_char '\n' content in
       let filtered =
@@ -251,7 +257,7 @@ let run ~input_file ~output_dir ~verbose:v =
   let entries = read_repo_file input_file in
   Printf.printf "Found %d repositories to process\n%!" (List.length entries);
   mkdir_p output_dir;
-  let opam_repo_dir = Filename.concat output_dir "opam-repository" in
+  let opam_repo_dir = Filename.concat output_dir "opam-mono-repo" in
   mkdir_p opam_repo_dir;
   create_repo_file opam_repo_dir;
   let vendor_dir = Filename.concat output_dir "vendor" in
@@ -262,7 +268,8 @@ let run ~input_file ~output_dir ~verbose:v =
       (fun entry ->
         match clone_or_update_repo ~vendor_dir entry with
         | Ok repo_path ->
-            generate_repo_structure ~output_dir:opam_repo_dir ~repo_path ~git_url:entry.url;
+            let git_sha = get_git_sha repo_path in
+            generate_repo_structure ~output_dir:opam_repo_dir ~repo_path ~git_url:entry.url ~git_sha;
             Ok repo_path
         | Error msg -> Error msg)
       entries
