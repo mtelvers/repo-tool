@@ -3,3 +3,4 @@ https://github.com/mtelvers/ocaml-imapd
 https://github.com/mtelvers/ocaml-slurm
 https://github.com/mtelvers/ocaml-octopus-energy
 https://github.com/mtelvers/braid
+https://github.com/mtelvers/ocaml-jpeg

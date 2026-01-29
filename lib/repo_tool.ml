@@ -257,7 +257,7 @@ let run ~input_file ~output_dir ~verbose:v =
   let entries = read_repo_file input_file in
   Printf.printf "Found %d repositories to process\n%!" (List.length entries);
   mkdir_p output_dir;
-  let opam_repo_dir = Filename.concat output_dir "opam-mono-repo" in
+  let opam_repo_dir = Filename.concat output_dir "opam-repository" in
   mkdir_p opam_repo_dir;
   create_repo_file opam_repo_dir;
   let vendor_dir = Filename.concat output_dir "vendor" in
