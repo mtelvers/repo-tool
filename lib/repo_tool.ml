@@ -56,6 +56,9 @@ let run_command cmd =
   else Error (Printf.sprintf "Command failed with exit code %d: %s" exit_code cmd)
 
 let get_git_sha repo_path =
+  let git_dir = Filename.concat repo_path ".git" in
+  if not (Sys.file_exists git_dir) then
+    failwith (Printf.sprintf "No .git directory in %s (was it renamed to .git.bak?)" repo_path);
   let cmd = Printf.sprintf "git -C %s rev-parse HEAD" repo_path in
   let ic = Unix.open_process_in cmd in
   let sha = input_line ic in
@@ -72,7 +75,8 @@ let rec mkdir_p path =
 let clone_or_update_repo ~vendor_dir entry =
   let name = extract_repo_name entry.url in
   let target = Filename.concat vendor_dir name in
-  if Sys.file_exists target then begin
+  let has_git = Sys.file_exists target && Sys.file_exists (Filename.concat target ".git") in
+  if has_git then begin
     log "Updating %s in %s" entry.url target;
     let cmd = Printf.sprintf "git -C %s pull --ff-only 2>/dev/null" target in
     match run_command cmd with
@@ -98,6 +102,11 @@ let clone_or_update_repo ~vendor_dir entry =
             Error msg
   end
   else begin
+    (* Remove stale directory with no .git before cloning *)
+    if Sys.file_exists target then begin
+      log "Removing stale directory %s (no .git)" target;
+      ignore (run_command (Printf.sprintf "rm -rf %s" target))
+    end;
     log "Cloning %s to %s" entry.url target;
     let branch_args =
       match entry.branch with

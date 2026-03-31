@@ -25,21 +25,30 @@ else
         git -C "$OPAM_REPO_DIR" remote add origin https://github.com/mtelvers/claude-repo
 fi
 
-# Restore .git directories for pulling
-find "$VENDOR_DIR" -mindepth 2 -maxdepth 2 -name ".git.bak" -type d 2>/dev/null | while read dir; do
-    mv "$dir" "$(dirname "$dir")/.git"
-done
+restore_vendor_git() {
+    find "$VENDOR_DIR" -mindepth 2 -maxdepth 2 -name ".git.bak" -type d 2>/dev/null | while read dir; do
+        mv "$dir" "$(dirname "$dir")/.git"
+    done
+}
+
+hide_vendor_git() {
+    find "$VENDOR_DIR" -mindepth 2 -maxdepth 2 -name ".git" -type d 2>/dev/null | while read dir; do
+        mv "$dir" "$(dirname "$dir")/.git.bak"
+    done
+    echo ".git.bak/" > "$VENDOR_DIR/.gitignore"
+}
+
+# Restore .git directories for pulling and running the tool
+restore_vendor_git
+
+# Ensure .git directories are hidden again even if the script fails
+trap hide_vendor_git EXIT
 
 # Run the tool
 opam exec -- dune exec -- repo-tool repos.txt
 
-# Hide .git directories so they don't appear as submodules
-find "$VENDOR_DIR" -mindepth 2 -maxdepth 2 -name ".git" -type d 2>/dev/null | while read dir; do
-    mv "$dir" "$(dirname "$dir")/.git.bak"
-done
-
-# Ensure .git.bak directories are ignored
-echo ".git.bak/" > "$VENDOR_DIR/.gitignore"
+# Hide .git directories before the commit steps (trap will be a no-op)
+hide_vendor_git
 
 # Commit and push changes to vendor repo
 cd "$VENDOR_DIR"
@@ -50,7 +59,29 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 cd - > /dev/null
 
-# Commit and push changes to opam-mono-repo
+# Update README.md with package table
+README="$OPAM_REPO_DIR/README.md"
+if [ -f "$README" ]; then
+    # Generate package table
+    TABLE="| Package | Description |\n|---------|-------------|"
+    for opam in "$OPAM_REPO_DIR"/packages/*/*/opam; do
+        if [ -f "$opam" ]; then
+            pkg=$(basename "$(dirname "$opam")")
+            synopsis=$(grep -m1 '^synopsis:' "$opam" | sed 's/^synopsis: *"\(.*\)"$/\1/')
+            TABLE="$TABLE\n| \`$pkg\` | $synopsis |"
+        fi
+    done
+
+    # Replace table in README (between ## Packages and next ##)
+    awk -v table="$TABLE" '
+        /^## Packages/ { print; getline; print; printing=0; printf table "\n"; next }
+        /^## / && printing==0 { printing=1 }
+        printing { print }
+        !printing && !/^\|/ { print }
+    ' "$README" > "$README.tmp" && mv "$README.tmp" "$README"
+fi
+
+# Commit and push changes to opam-repository
 cd "$OPAM_REPO_DIR"
 if [ -n "$(git status --porcelain)" ]; then
     git add -A
