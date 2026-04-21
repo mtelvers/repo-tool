@@ -1,6 +1,8 @@
+type pin = Branch of string | Commit of string
+
 type repo_entry = {
   url : string;
-  branch : string option;
+  pin : pin option;
 }
 
 let verbose = ref false
@@ -9,14 +11,25 @@ let log fmt =
   if !verbose then Printf.eprintf (fmt ^^ "\n%!")
   else Printf.ifprintf stderr fmt
 
+let is_sha s =
+  String.length s = 40
+  && String.for_all
+       (fun c ->
+         (c >= '0' && c <= '9')
+         || (c >= 'a' && c <= 'f')
+         || (c >= 'A' && c <= 'F'))
+       s
+
 let parse_repo_line line =
   let line = String.trim line in
   if String.length line = 0 || line.[0] = '#' then None
   else
     match String.split_on_char ' ' line with
     | [] -> None
-    | [ url ] -> Some { url; branch = None }
-    | url :: branch :: _ -> Some { url; branch = Some branch }
+    | [ url ] -> Some { url; pin = None }
+    | url :: spec :: _ ->
+        let pin = if is_sha spec then Commit spec else Branch spec in
+        Some { url; pin = Some pin }
 
 let read_lines filename =
   let ic = open_in filename in
@@ -76,53 +89,75 @@ let clone_or_update_repo ~vendor_dir entry =
   let name = extract_repo_name entry.url in
   let target = Filename.concat vendor_dir name in
   let has_git = Sys.file_exists target && Sys.file_exists (Filename.concat target ".git") in
-  if has_git then begin
-    log "Updating %s in %s" entry.url target;
-    let cmd = Printf.sprintf "git -C %s pull --ff-only 2>/dev/null" target in
-    match run_command cmd with
-    | Ok () -> Ok target
-    | Error _ ->
-        (* If pull fails, try a fresh clone *)
-        log "Pull failed, re-cloning %s" entry.url;
-        let rm_cmd = Printf.sprintf "rm -rf %s" target in
-        ignore (run_command rm_cmd);
-        let branch_args =
-          match entry.branch with
-          | Some b -> Printf.sprintf "--branch %s" b
-          | None -> ""
+  match entry.pin with
+  | Some (Commit sha) ->
+      let at_target =
+        has_git && (try get_git_sha target = sha with _ -> false)
+      in
+      if at_target then begin
+        log "%s already at %s" target sha;
+        Ok target
+      end
+      else begin
+        if Sys.file_exists target then begin
+          log "Removing %s for fresh clone at %s" target sha;
+          ignore (run_command (Printf.sprintf "rm -rf %s" target))
+        end;
+        log "Cloning %s to %s (pinned to %s)" entry.url target sha;
+        let cmd =
+          Printf.sprintf
+            "git clone %s %s 2>/dev/null && git -C %s checkout %s 2>/dev/null"
+            entry.url target target sha
         in
-        let clone_cmd =
+        match run_command cmd with
+        | Ok () -> Ok target
+        | Error msg ->
+            Printf.eprintf "Failed to clone %s at %s: %s\n%!" entry.url sha msg;
+            Error msg
+      end
+  | branch_pin ->
+      let branch_args =
+        match branch_pin with
+        | Some (Branch b) -> Printf.sprintf "--branch %s" b
+        | _ -> ""
+      in
+      if has_git then begin
+        log "Updating %s in %s" entry.url target;
+        let cmd = Printf.sprintf "git -C %s pull --ff-only 2>/dev/null" target in
+        match run_command cmd with
+        | Ok () -> Ok target
+        | Error _ ->
+            (* If pull fails, try a fresh clone *)
+            log "Pull failed, re-cloning %s" entry.url;
+            let rm_cmd = Printf.sprintf "rm -rf %s" target in
+            ignore (run_command rm_cmd);
+            let clone_cmd =
+              Printf.sprintf "git clone --depth 1 %s %s %s 2>/dev/null"
+                branch_args entry.url target
+            in
+            match run_command clone_cmd with
+            | Ok () -> Ok target
+            | Error msg ->
+                Printf.eprintf "Failed to clone %s: %s\n%!" entry.url msg;
+                Error msg
+      end
+      else begin
+        (* Remove stale directory with no .git before cloning *)
+        if Sys.file_exists target then begin
+          log "Removing stale directory %s (no .git)" target;
+          ignore (run_command (Printf.sprintf "rm -rf %s" target))
+        end;
+        log "Cloning %s to %s" entry.url target;
+        let cmd =
           Printf.sprintf "git clone --depth 1 %s %s %s 2>/dev/null"
             branch_args entry.url target
         in
-        match run_command clone_cmd with
+        match run_command cmd with
         | Ok () -> Ok target
         | Error msg ->
             Printf.eprintf "Failed to clone %s: %s\n%!" entry.url msg;
             Error msg
-  end
-  else begin
-    (* Remove stale directory with no .git before cloning *)
-    if Sys.file_exists target then begin
-      log "Removing stale directory %s (no .git)" target;
-      ignore (run_command (Printf.sprintf "rm -rf %s" target))
-    end;
-    log "Cloning %s to %s" entry.url target;
-    let branch_args =
-      match entry.branch with
-      | Some b -> Printf.sprintf "--branch %s" b
-      | None -> ""
-    in
-    let cmd =
-      Printf.sprintf "git clone --depth 1 %s %s %s 2>/dev/null"
-        branch_args entry.url target
-    in
-    match run_command cmd with
-    | Ok () -> Ok target
-    | Error msg ->
-        Printf.eprintf "Failed to clone %s: %s\n%!" entry.url msg;
-        Error msg
-  end
+      end
 
 let find_opam_files repo_path =
   let files = Sys.readdir repo_path in

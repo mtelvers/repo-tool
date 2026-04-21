@@ -4,3 +4,12 @@ https://github.com/mtelvers/ocaml-slurm
 https://github.com/mtelvers/ocaml-octopus-energy
 https://github.com/mtelvers/braid
 https://github.com/mtelvers/ocaml-jpeg
+https://github.com/mtelvers/ocaml-zarr
+https://github.com/mtelvers/ocaml-mp3
+https://github.com/mtelvers/ocaml-png
+https://github.com/mtelvers/ocaml-npy
+https://github.com/ocurrent/solver-service f14bc6fdb22c1cef45bb3d3589bd778f4d6c8196
+https://github.com/tmattio/opam-tailwindcss e5bb6361a50c7cc5cad802311e609336583ca08f
+https://github.com/mtelvers/stac-server
+https://github.com/mtelvers/repo-tool
+https://github.com/mtelvers/opam-hub

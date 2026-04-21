@@ -19,10 +19,10 @@ fi
 
 if [ ! -d "$OPAM_REPO_DIR/.git" ]; then
     rm -rf "$OPAM_REPO_DIR"
-    git clone https://github.com/mtelvers/claude-repo "$OPAM_REPO_DIR"
+    git clone https://github.com/tunbury/claude-repo "$OPAM_REPO_DIR"
 else
-    git -C "$OPAM_REPO_DIR" remote set-url origin https://github.com/mtelvers/claude-repo 2>/dev/null || \
-        git -C "$OPAM_REPO_DIR" remote add origin https://github.com/mtelvers/claude-repo
+    git -C "$OPAM_REPO_DIR" remote set-url origin https://github.com/tunbury/claude-repo 2>/dev/null || \
+        git -C "$OPAM_REPO_DIR" remote add origin https://github.com/tunbury/claude-repo
 fi
 
 restore_vendor_git() {
